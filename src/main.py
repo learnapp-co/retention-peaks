@@ -8,7 +8,6 @@ from fastapi import FastAPI
 from dotenv import load_dotenv
 
 from .routes import (
-    video,
     heatmap,
     video_retention_peaks,
 )
@@ -56,7 +55,6 @@ async def startup_event():
 
     # Initialize and include all routers
 
-    app.include_router(video.init_routes(redis_client))
     app.include_router(heatmap.init_routes())
     app.include_router(video_retention_peaks.init_routes(redis_client))
 

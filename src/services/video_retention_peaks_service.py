@@ -2,7 +2,6 @@
 
 from redis.asyncio import Redis
 from fastapi import HTTPException
-from src.services.youtube_service import YouTubeService
 from src.models.video_retention_peaks import (
     VideoRetentionPeaks,
     VideoRetentionPeaksResponse,
@@ -14,7 +13,6 @@ class VideoRetentionPeakService:
 
     def __init__(self, redis_client: Redis | None = None):
         """Initialize video retention peaks service"""
-        self.youtube_service = YouTubeService(redis_client)
 
     async def get_video_retention_peak(
         self, video_id: str

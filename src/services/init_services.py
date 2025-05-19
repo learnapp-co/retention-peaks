@@ -7,9 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from redis import asyncio as aioredis
 
 from src.models.workspace import Channel, Comment, Workspace, Video
-from src.models.search_history import SearchHistory
 from src.models.heatmap import heatmap_peaks  # Import your mode
-from src.models.collection import Collection
 from src.models.video_retention_peaks import VideoRetentionPeaks
 
 logger = logging.getLogger(__name__)
@@ -31,8 +29,6 @@ async def init_services():
         await beanie.init_beanie(
             database=client.youbase,
             document_models=[
-                Collection,
-                SearchHistory,
                 Workspace,
                 Channel,
                 Video,

@@ -60,6 +60,10 @@ class Channel(Document):
     views: int = Field(default=0)
     published_at: str
     banner: Optional[str] = Field(default=None)
+    long_video_count: int
+    short_video_count: int
+    long_video_view_count: int
+    short_video_view_count: int
     stats_history: List[ChannelStats] = Field(default_factory=list)
     updated_at: datetime = Field(default_factory=datetime.now)
     created_at: datetime = Field(default_factory=datetime.now)
