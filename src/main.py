@@ -51,12 +51,12 @@ async def startup_event():
     logger.info("Starting application...")
 
     # Initialize Redis and other services
-    redis_client = await init_services()
+    await init_services()
 
     # Initialize and include all routers
 
     app.include_router(heatmap.init_routes())
-    app.include_router(video_retention_peaks.init_routes(redis_client))
+    app.include_router(video_retention_peaks.init_routes())
 
     logger.info("All services initialized successfully")
 
