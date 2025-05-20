@@ -81,7 +81,6 @@ class HeatmapExtractionService:
                 browser_context = await p.chromium.launch_persistent_context(
                     user_data_dir=user_data_dir,
                     headless=True,
-                    executable_path="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
                     viewport={"width": 1920, "height": 1080},
                 )
 

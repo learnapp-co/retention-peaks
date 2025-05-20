@@ -19,23 +19,32 @@ async def init_services():
     try:
         # MongoDB connection
         mongo_uri = os.getenv("MONGODB_URI", os.environ.get("MONGODB_URI"))
+        
+        if not mongo_uri:
+            logger.error("MONGODB_URI environment variable is not set")
+            raise ValueError("MONGODB_URI environment variable is not set")
 
-        client = AsyncIOMotorClient(mongo_uri, tlsAllowInvalidCertificates=True)
-
-        # Test the connection
-        await client.admin.command("ping")
-        logger.info("Successfully connected to MongoDB")
-
-        # Initialize Beanie with models
-        await beanie.init_beanie(
-            database=client.youbase,
-            document_models=[
-                Video,
-                heatmap_peaks,
-                VideoRetentionPeaks,
-            ],
-        )
-        logger.info("Beanie initialized successfully")
+        try:
+            client = AsyncIOMotorClient(mongo_uri, tlsAllowInvalidCertificates=True, serverSelectionTimeoutMS=5000)
+            
+            # Test the connection
+            await client.admin.command("ping")
+            logger.info("Successfully connected to MongoDB")
+            
+            # Initialize Beanie with models
+            await beanie.init_beanie(
+                database=client.youbase,
+                document_models=[
+                    Video,
+                    heatmap_peaks,
+                    VideoRetentionPeaks,
+                ],
+            )
+            logger.info("Beanie initialized successfully")
+            
+        except Exception as db_error:
+            logger.error(f"MongoDB connection failed: {str(db_error)}")
+            raise ValueError(f"MongoDB connection failed: {str(db_error)}")
 
         # # Redis connection (optional for collections testing)
         # try:

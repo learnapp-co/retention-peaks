@@ -4,7 +4,7 @@ main.py
 
 import logging
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from dotenv import load_dotenv
 
 from .routes import (
@@ -44,21 +44,31 @@ app.add_middleware(
 )
 
 
+# Add a simple health check endpoint that doesn't depend on database connection
+@app.get("/health", include_in_schema=False)
+async def health_check():
+    return {"status": "ok"}
+
+
 # Initialize services on startup
 @app.on_event("startup")
 async def startup_event():
     print("All services initialized successfully")
     logger.info("Starting application...")
 
-    # Initialize Redis and other services
-    await init_services()
+    try:
+        # Initialize Redis and other services
+        await init_services()
 
-    # Initialize and include all routers
+        # Initialize and include all routers
+        app.include_router(heatmap.init_routes())
+        app.include_router(video_retention_peaks.init_routes())
 
-    app.include_router(heatmap.init_routes())
-    app.include_router(video_retention_peaks.init_routes())
-
-    logger.info("All services initialized successfully")
+        logger.info("All services initialized successfully")
+    except Exception as e:
+        logger.error(f"Error initializing services: {str(e)}")
+        # Still allow the application to start even if services fail
+        # This way the health check endpoint will still work
 
 
 # Add CORS middleware to the FastAPI ap
