@@ -7,3 +7,7 @@ startCommand = "uvicorn src.main:app --host 0.0.0.0 --port 8000"
 healthcheckPath = "/health"
 healthcheckTimeout = 100
 restartPolicyType = "ON_FAILURE"
+numReplicas = 1
+
+[deploy.envs]
+PORT = "8000"
