@@ -80,8 +80,9 @@ class HeatmapExtractionService:
                 user_data_dir = "/tmp/playwright-profile"  # persistent profile
                 browser_context = await p.chromium.launch_persistent_context(
                     user_data_dir=user_data_dir,
-                    headless=True,
-                    viewport={"width": 1920, "height": 1080},
+                    headless=False,
+                    args=["--start-maximized"],
+                    no_viewport=True,
                 )
 
                 page = (
@@ -139,17 +140,23 @@ class HeatmapExtractionService:
                         logger.info("✅ No ads detected or ad finished")
                         break
 
+                # 🔍 Debug screenshot before fullscreen
+                await page.screenshot(path="debug_fullscreen_check.png")
+
                 try:
                     fullscreen_button = page.locator(".ytp-fullscreen-button")
                     if await fullscreen_button.is_visible(timeout=3000):
                         await fullscreen_button.click()
                         await page.wait_for_timeout(2000)
                     else:
+                        # 🔁 JS fallback to force fullscreen click
                         logger.warning(
-                            "❌ Fullscreen button not visible, skipping peak extraction."
+                            "❌ Fullscreen button not visible via locator, trying JS fallback."
                         )
-                        await self._save_empty_peaks(video_id)
-                        return [], ""
+                        await page.evaluate(
+                            """document.querySelector('.ytp-fullscreen-button')?.click()"""
+                        )
+                        await page.wait_for_timeout(2000)
                 except Exception as e:
                     logger.warning("Fullscreen failed with error: %s", str(e))
                     await self._save_empty_peaks(video_id)
@@ -255,7 +262,6 @@ class HeatmapExtractionService:
                     os.remove(screenshot_path)
                 except Exception as e:
                     logger.error("Failed to remove screenshot: %s", str(e))
-            # Cleanup browser
             try:
                 await browser_context.close()
             except Exception:
