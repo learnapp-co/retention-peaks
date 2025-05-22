@@ -1,6 +1,5 @@
 """Video retention peaks service for managing YouTube videos"""
 
-from redis.asyncio import Redis
 from fastapi import HTTPException
 from src.models.video_retention_peaks import (
     VideoRetentionPeaks,

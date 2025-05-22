@@ -1,8 +1,6 @@
 """Video Retention Peaks routes"""
 
-from typing import List
 from fastapi import APIRouter
-from redis.asyncio import Redis
 from ..models.video_retention_peaks import (
     VideoRetentionPeaksResponse,
 )

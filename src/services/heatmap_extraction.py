@@ -91,7 +91,6 @@ class HeatmapExtractionService:
                     no_viewport=True,
                     record_video_dir=".",  # Save video in current directory
                     record_video_size={"width": 1920, "height": 1080},
-                    stderr=sys.stderr,  # or redirect to a file
                 )
 
                 page = (
