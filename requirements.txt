@@ -2,8 +2,6 @@
 fastapi>=0.104.0
 uvicorn>=0.24.0
 motor>=3.3.1
-redis>=5.0.1
-google-api-python-client>=2.106.0
 python-dotenv>=1.0.0
 pydantic>=2.4.2
 beanie>=1.23.0

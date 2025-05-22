@@ -1,4 +1,5 @@
 import os
+import sys
 import base64
 import cv2
 import numpy as np
@@ -82,10 +83,15 @@ class HeatmapExtractionService:
                 browser_context = await p.chromium.launch_persistent_context(
                     user_data_dir=user_data_dir,
                     headless=True,
-                    args=["--start-maximized"],
+                    args=[
+                        "--start-maximized",
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                    ],
                     no_viewport=True,
                     record_video_dir=".",  # Save video in current directory
                     record_video_size={"width": 1920, "height": 1080},
+                    stderr=sys.stderr,  # or redirect to a file
                 )
 
                 page = (
