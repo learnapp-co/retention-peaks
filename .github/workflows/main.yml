@@ -20,5 +20,5 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /home/ubuntu/retention_peaks
+            cd /home/ubuntu/retention-peaks
             ./deploy.sh
