@@ -157,7 +157,7 @@
   },
   {
     "domain": ".youtube.com",
-    "expirationDate": 1779440379.222216,
+    "expirationDate": 1779441581.88552,
     "hostOnly": false,
     "httpOnly": true,
     "name": "__Secure-1PSIDTS",
@@ -166,11 +166,11 @@
     "secure": true,
     "session": false,
     "storeId": "0",
-    "value": "sidts-CjEBjplskNYWPBp2S3punYN5XoinWsp6_4ekNht-QOmC5Cb_kei-ySP_tZy7hU3wfwL4EAA"
+    "value": "sidts-CjEBjplskMuCQGIbV7z2d-jp1C7eroiatFBOtji_C-Zn_ijm1oKhIE_6pIOJXwVE_BfqEAA"
   },
   {
     "domain": ".youtube.com",
-    "expirationDate": 1779440379.222509,
+    "expirationDate": 1779441581.885897,
     "hostOnly": false,
     "httpOnly": true,
     "name": "__Secure-3PSIDTS",
@@ -179,50 +179,11 @@
     "secure": true,
     "session": false,
     "storeId": "0",
-    "value": "sidts-CjEBjplskNYWPBp2S3punYN5XoinWsp6_4ekNht-QOmC5Cb_kei-ySP_tZy7hU3wfwL4EAA"
+    "value": "sidts-CjEBjplskMuCQGIbV7z2d-jp1C7eroiatFBOtji_C-Zn_ijm1oKhIE_6pIOJXwVE_BfqEAA"
   },
   {
     "domain": ".youtube.com",
-    "expirationDate": 1747904972,
-    "hostOnly": false,
-    "httpOnly": false,
-    "name": "ST-l3hjtt",
-    "path": "/",
-    "sameSite": "unspecified",
-    "secure": false,
-    "session": false,
-    "storeId": "0",
-    "value": "session_logininfo=AFmmF2swRAIgaYwa-ga7YL_J16CKIsZeWzKUsEDDPTOUY-VCQuO1dFwCIBv53bnvXbsqKF6tFys1jILpUur8rFX_g_7nEaJqNQWs%3AQUQ3MjNmekNVRXl6V0VuN1F1Wl9fa3pkc1MxcjJLdmxsY1pRM05PdllqNzM2SVI0LUZEdDNZQ2paWjFJSW9ub05wUGRHNnhrb1Zxb05Dd0F3dXl4czBfWmZUdGlHeWFJdThhYjVXWXpPYlNROFNVQ1lIZ1Z0NHIzOFlBYVNMM2gxRVhaQVVMQ2Y3X0VRZkFLeW05QVVYejJZdTVQUEp3MFln"
-  },
-  {
-    "domain": ".youtube.com",
-    "expirationDate": 1747904973,
-    "hostOnly": false,
-    "httpOnly": false,
-    "name": "ST-xuwub9",
-    "path": "/",
-    "sameSite": "unspecified",
-    "secure": false,
-    "session": false,
-    "storeId": "0",
-    "value": "session_logininfo=AFmmF2swRAIgaYwa-ga7YL_J16CKIsZeWzKUsEDDPTOUY-VCQuO1dFwCIBv53bnvXbsqKF6tFys1jILpUur8rFX_g_7nEaJqNQWs%3AQUQ3MjNmekNVRXl6V0VuN1F1Wl9fa3pkc1MxcjJLdmxsY1pRM05PdllqNzM2SVI0LUZEdDNZQ2paWjFJSW9ub05wUGRHNnhrb1Zxb05Dd0F3dXl4czBfWmZUdGlHeWFJdThhYjVXWXpPYlNROFNVQ1lIZ1Z0NHIzOFlBYVNMM2gxRVhaQVVMQ2Y3X0VRZkFLeW05QVVYejJZdTVQUEp3MFln"
-  },
-  {
-    "domain": ".youtube.com",
-    "expirationDate": 1747904973,
-    "hostOnly": false,
-    "httpOnly": false,
-    "name": "ST-amrb2j",
-    "path": "/",
-    "sameSite": "unspecified",
-    "secure": false,
-    "session": false,
-    "storeId": "0",
-    "value": "session_logininfo=AFmmF2swRAIgaYwa-ga7YL_J16CKIsZeWzKUsEDDPTOUY-VCQuO1dFwCIBv53bnvXbsqKF6tFys1jILpUur8rFX_g_7nEaJqNQWs%3AQUQ3MjNmekNVRXl6V0VuN1F1Wl9fa3pkc1MxcjJLdmxsY1pRM05PdllqNzM2SVI0LUZEdDNZQ2paWjFJSW9ub05wUGRHNnhrb1Zxb05Dd0F3dXl4czBfWmZUdGlHeWFJdThhYjVXWXpPYlNROFNVQ1lIZ1Z0NHIzOFlBYVNMM2gxRVhaQVVMQ2Y3X0VRZkFLeW05QVVYejJZdTVQUEp3MFln"
-  },
-  {
-    "domain": ".youtube.com",
-    "expirationDate": 1779440972.25251,
+    "expirationDate": 1779441581.88606,
     "hostOnly": false,
     "httpOnly": false,
     "name": "SIDCC",
@@ -231,11 +192,11 @@
     "secure": false,
     "session": false,
     "storeId": "0",
-    "value": "AKEyXzVwuRTOPWS4dJLhYE0y1RnTnr8bIpzKcVYbG_qohXugpAeCULBumvD48HMVpLWEBEJKuQ"
+    "value": "AKEyXzV1Ws4wbICahWXSMvbbWe8T1w0y_moZ4L2HTRhCNSwfM0ygyet4pR4b3MfBCgaY8bK7Ag"
   },
   {
     "domain": ".youtube.com",
-    "expirationDate": 1779440972.252539,
+    "expirationDate": 1779441581.886206,
     "hostOnly": false,
     "httpOnly": true,
     "name": "__Secure-1PSIDCC",
@@ -244,11 +205,11 @@
     "secure": true,
     "session": false,
     "storeId": "0",
-    "value": "AKEyXzURqraXEyyPdqohc9maXJ8U3GFX5nSIzTtiWykEwW2jGWgPAr7VTVJQ932m94NGNB39tY8"
+    "value": "AKEyXzUtlrGeJXUQkA3VjqhpDCX7XF7kTiGq6b6mRsBHaYZg5OvZo1zG4rKFQ9UhaeA9QKz9mQE"
   },
   {
     "domain": ".youtube.com",
-    "expirationDate": 1779440972.252565,
+    "expirationDate": 1779441581.88635,
     "hostOnly": false,
     "httpOnly": true,
     "name": "__Secure-3PSIDCC",
@@ -257,6 +218,6 @@
     "secure": true,
     "session": false,
     "storeId": "0",
-    "value": "AKEyXzVHk79oxRgsqZM8V32ofdtGzNI1ja3YUc8jTq7fBVJHPxF8cWlsNrmPYfGa1TtBZ7JRU7E"
+    "value": "AKEyXzW9ZQOzmtkuHYrkOIVu-BO93mkQtUKdaBR0H8VNj7h4EyvJbMPd9fWZEFr3PYQ89L8t99o"
   }
 ]
