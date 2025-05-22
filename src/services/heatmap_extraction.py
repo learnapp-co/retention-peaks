@@ -74,6 +74,7 @@ class HeatmapExtractionService:
         DEFAULT_RESPONSE: tuple[list[PeakData], str] = ([], "")
         screenshot_path = None
         video_url = f"https://www.youtube.com/watch?v={video_id}"
+        video_recording_path = None
 
         try:
             async with async_playwright() as p:
@@ -83,6 +84,8 @@ class HeatmapExtractionService:
                     headless=True,
                     args=["--start-maximized"],
                     no_viewport=True,
+                    record_video_dir=".",  # Save video in current directory
+                    record_video_size={"width": 1920, "height": 1080},
                 )
 
                 page = (
@@ -143,7 +146,7 @@ class HeatmapExtractionService:
                         logger.info("✅ No ads detected or ad finished")
                         break
 
-                # 🔍 Debug screenshot before fullscreen
+                # Screenshot before fullscreen
                 await page.screenshot(path="debug_fullscreen_check.png")
 
                 try:
@@ -152,7 +155,7 @@ class HeatmapExtractionService:
                         await fullscreen_button.click()
                         await page.wait_for_timeout(2000)
                     else:
-                        # 🔁 JS fallback to force fullscreen click
+                        # JS fallback to force fullscreen click
                         logger.warning(
                             "❌ Fullscreen button not visible via locator, trying JS fallback."
                         )
@@ -164,6 +167,9 @@ class HeatmapExtractionService:
                     logger.warning("Fullscreen failed with error: %s", str(e))
                     await self._save_empty_peaks(video_id)
                     return [], ""
+
+                # Screenshot after entering fullscreen
+                await page.screenshot(path="debug_after_fullscreen.png")
 
                 await page.evaluate(
                     """
@@ -225,9 +231,16 @@ class HeatmapExtractionService:
 
                 await page.wait_for_timeout(1000)
 
-                # 🔍 Debug screenshot before fullscreen
+                # Final screenshot for heatmap extraction
                 screenshot_path = "heatmap_screenshot.png"
                 await page.screenshot(path=screenshot_path)
+
+                # Stop and save the video recording
+                try:
+                    video_recording_path = await page.video.path()
+                    logger.info(f"Screen recording saved at: {video_recording_path}")
+                except Exception as e:
+                    logger.warning(f"Could not save screen recording: {e}")
 
                 v_id = video_url.split("?v=")[1]
                 video = await Video.find_one({"video_id": v_id})
