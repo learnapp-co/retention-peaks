@@ -100,12 +100,21 @@ class HeatmapExtractionService:
                 await page.goto(video_url, timeout=60000)
                 await page.wait_for_timeout(5000)
 
+                await page.screenshot(path="debug_before_player.png")
+
                 try:
                     await page.click('button:has-text("Accept")', timeout=5000)
                 except Exception:
                     logger.info("No cookie prompt found.")
 
-                await page.wait_for_selector(".html5-video-player", timeout=15000)
+                # Increase timeout and add error screenshot
+                try:
+                    await page.wait_for_selector(".html5-video-player", timeout=30000)
+                except Exception as e:
+                    await page.screenshot(path="debug_player_timeout.png")
+                    logger.error("Timeout waiting for .html5-video-player: %s", str(e))
+                    await self._save_empty_peaks(video_id)
+                    return [], ""
 
                 # Screenshot after video loads
                 await page.screenshot(path="debug_after_video_load.png")
