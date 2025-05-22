@@ -104,6 +104,9 @@ class HeatmapExtractionService:
 
                 await page.wait_for_selector(".html5-video-player", timeout=15000)
 
+                # Screenshot after video loads
+                await page.screenshot(path="debug_after_video_load.png")
+
                 error_selector = ".ytp-error"
                 try:
                     is_error = await page.is_visible(error_selector, timeout=3000)
@@ -222,6 +225,7 @@ class HeatmapExtractionService:
 
                 await page.wait_for_timeout(1000)
 
+                # 🔍 Debug screenshot before fullscreen
                 screenshot_path = "heatmap_screenshot.png"
                 await page.screenshot(path=screenshot_path)
 
