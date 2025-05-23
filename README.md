@@ -47,29 +47,6 @@ A Python-based YouTube search bot that utilizes the YouTube Data API v3 for sear
 3. Verify MongoDB is running on default port 27017
 4. Update `MONGODB_URI` in `.env` file if using a different configuration
 
-### Redis Setup
-
-1. Install Redis:
-   - Linux/macOS: Use package manager or [download](https://redis.io/download)
-   - Windows: Use [Windows Subsystem for Linux](https://redis.io/docs/getting-started/installation/install-redis-on-windows/)
-2. Start Redis server:
-   - Linux/macOS: `redis-server`
-   - Windows WSL: `sudo service redis-server start`
-3. Verify Redis is running on default port 6379
-4. Update Redis configuration in `.env` if using different settings
-
-## Configuration
-
-Update the following environment variables in the `.env` file:
-
-- `YOUTUBE_API_KEY`: Your YouTube Data API v3 key
-- `MONGODB_URI`: MongoDB connection string (default: mongodb://localhost:27017/youtube_bot)
-- `REDIS_HOST`: Redis host (default: localhost)
-- `REDIS_PORT`: Redis port (default: 6379)
-- `REDIS_PASSWORD`: Redis password (if required)
-- `PORT`: Application port (default: 8000)
-- `NODE_ENV`: Environment (development/production)
-
 ## Development
 
 Start the development server:
