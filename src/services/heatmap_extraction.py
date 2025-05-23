@@ -13,6 +13,8 @@ from playwright_stealth import stealth_sync
 from ..models.heatmap import PeakData
 from src.models.workspace import Video
 from ..models.heatmap import HeatmapResponse, heatmap_peaks
+import matplotlib.pyplot as plt
+
 
 logger = logging.getLogger(__name__)
 
@@ -206,6 +208,8 @@ class HeatmapExtractionService:
                     if (captions) captions.style.display = 'none';
                     const annotation = document.querySelector('.annotation');
                     if (annotation) annotation.style.display = 'none';
+                    const redDot = document.querySelector('.ytp-scrubber-container');
+                    if (redDot) redDot.style.display = 'none';
                 """
                 )
 
@@ -343,6 +347,7 @@ class HeatmapExtractionService:
         _, buffer = cv2.imencode(".png", roi_cropped)
         base64_image = base64.b64encode(buffer).decode("utf-8")
 
+        # Enhanced image processing
         heatmap_gray = cv2.cvtColor(roi_cropped, cv2.COLOR_BGR2GRAY)
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         heatmap_gray = clahe.apply(heatmap_gray)
@@ -352,11 +357,31 @@ class HeatmapExtractionService:
         )
         column_profile = np.sum(mask, axis=0)
         column_profile = column_profile / (np.max(column_profile) + 1e-6)
+
+        # Enhanced smoothing
         smoothed = np.convolve(column_profile, np.ones(30) / 30, mode="same")
 
+        # Filter out low intensity values
+        smoothed[smoothed < np.max(smoothed) * 0.3] = 0
+
+        # Enhanced peak detection with stricter parameters
         peaks, properties = find_peaks(
-            smoothed, height=np.mean(smoothed) * 1, distance=30
+            smoothed,
+            height=np.mean(smoothed) * 1.5,  # Increased threshold
+            distance=50,  # Increased minimum distance
+            width=10,  # Minimum peak width
+            prominence=0.2,  # Added prominence requirement
         )
+
+        # Debug visualization
+        plt.figure(figsize=(15, 5))
+        plt.plot(smoothed)
+        plt.plot(peaks, smoothed[peaks], "x")
+        plt.savefig(f"debug_peaks_{video_id}.png")
+        plt.close()
+
+        logger.info("Peak heights: {properties['peak_heights']}")
+        logger.info("Mean signal: {np.mean(smoothed)}")
 
         width = mask.shape[1]
         if not isinstance(duration, (int, float)) or duration <= 0:
@@ -364,32 +389,40 @@ class HeatmapExtractionService:
             return [], ""
 
         duration_per_column = duration / width
+
+        # Enhanced peak filtering
+        min_peak_height = np.max(smoothed) * 0.4  # 40% of max height
         filtered_peaks = [
-            (peak, properties["peak_heights"][i]) for i, peak in enumerate(peaks)
+            (peak, properties["peak_heights"][i])
+            for i, peak in enumerate(peaks)
+            if properties["peak_heights"][i] > min_peak_height
         ]
+
         sorted_peaks = sorted(filtered_peaks, key=lambda x: x[1], reverse=True)[:9]
 
         results = []
-        for peak, _ in sorted_peaks:
+        for peak, peak_height in sorted_peaks:
             peak_ts = (peak / width) * duration
             start_ts = max(0, peak_ts - 5)
             end_ts = min(duration, start_ts + 10)
             if end_ts - start_ts < 10:
                 start_ts = max(0, end_ts - 10)
 
-            timestamp_str = (
-                f"{self._format_timestamp(start_ts)} - {self._format_timestamp(end_ts)}"
-            )
-            peak_url = f"https://www.youtube.com/watch?v={video_id}&t={int(start_ts)}s"
-
-            results.append(
-                PeakData(
-                    timestamp=timestamp_str,
-                    youtube_url=peak_url,
-                    start_seconds=round(start_ts, 2),
-                    end_seconds=round(end_ts, 2),
+            # Only add peaks that meet minimum duration criteria
+            if end_ts - start_ts >= 5:  # Minimum 5 second segments
+                timestamp_str = f"{self._format_timestamp(start_ts)} - {self._format_timestamp(end_ts)}"
+                peak_url = (
+                    f"https://www.youtube.com/watch?v={video_id}&t={int(start_ts)}s"
                 )
-            )
+
+                results.append(
+                    PeakData(
+                        timestamp=timestamp_str,
+                        youtube_url=peak_url,
+                        start_seconds=round(start_ts, 2),
+                        end_seconds=round(end_ts, 2),
+                    )
+                )
 
         logger.info("📊 Detected peaks:%s", results)
         return results, base64_image
