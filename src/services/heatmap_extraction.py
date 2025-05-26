@@ -80,7 +80,7 @@ class HeatmapExtractionService:
 
         try:
             async with async_playwright() as p:
-                user_data_dir = "/tmp/playwright-profile"  # persistent profile
+                user_data_dir = "./youtube-user-data"  # persistent profile
                 browser_context = await p.chromium.launch_persistent_context(
                     user_data_dir=user_data_dir,
                     headless=True,
@@ -93,6 +93,10 @@ class HeatmapExtractionService:
                     record_video_dir=".",  # Save video in current directory
                     record_video_size={"width": 1920, "height": 1080},
                     user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},
+                    geolocation={"longitude": -122.4194, "latitude": 37.7749},
+                    permissions=["geolocation"],
+                    executable_path="/usr/bin/chromium-browser",
                 )
 
                 page = (
