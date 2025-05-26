@@ -13,6 +13,9 @@ from ..models.heatmap import PeakData
 from src.models.workspace import Video
 from ..models.heatmap import HeatmapResponse, heatmap_peaks
 import matplotlib.pyplot as plt
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 logger = logging.getLogger(__name__)
@@ -78,6 +81,10 @@ class HeatmapExtractionService:
         video_url = f"https://www.youtube.com/watch?v={video_id}"
         video_recording_path = None
 
+        on_ec2 = os.getenv("ON_EC2", "false").lower() == "true"
+        logger.info(f"Running on EC2: {on_ec2}")
+        executable_path = "/usr/bin/google-chrome-stable" if on_ec2 else None
+
         try:
             async with async_playwright() as p:
                 user_data_dir = "./youtube-user-data"  # persistent profile
@@ -96,7 +103,7 @@ class HeatmapExtractionService:
                     extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},
                     geolocation={"longitude": -122.4194, "latitude": 37.7749},
                     permissions=["geolocation"],
-                    executable_path="/usr/bin/chromium-browser",
+                    executable_path=executable_path,
                 )
 
                 page = (
