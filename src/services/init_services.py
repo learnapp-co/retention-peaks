@@ -4,12 +4,15 @@ import os
 import logging
 import beanie
 from motor.motor_asyncio import AsyncIOMotorClient
+from dotenv import load_dotenv
 
 # from redis import asyncio as aioredis
 
 from src.models.workspace import Video
 from src.models.heatmap import heatmap_peaks  # Import your mode
 from src.models.video_retention_peaks import VideoRetentionPeaks
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -19,18 +22,22 @@ async def init_services():
     try:
         # MongoDB connection
         mongo_uri = os.getenv("MONGODB_URI", os.environ.get("MONGODB_URI"))
-        
+
         if not mongo_uri:
             logger.error("MONGODB_URI environment variable is not set")
             raise ValueError("MONGODB_URI environment variable is not set")
 
         try:
-            client = AsyncIOMotorClient(mongo_uri, tlsAllowInvalidCertificates=True, serverSelectionTimeoutMS=5000)
-            
+            client = AsyncIOMotorClient(
+                mongo_uri,
+                tlsAllowInvalidCertificates=True,
+                serverSelectionTimeoutMS=5000,
+            )
+
             # Test the connection
             await client.admin.command("ping")
             logger.info("Successfully connected to MongoDB")
-            
+
             # Initialize Beanie with models
             await beanie.init_beanie(
                 database=client.youbase,
@@ -41,7 +48,7 @@ async def init_services():
                 ],
             )
             logger.info("Beanie initialized successfully")
-            
+
         except Exception as db_error:
             logger.error(f"MongoDB connection failed: {str(db_error)}")
             raise ValueError(f"MongoDB connection failed: {str(db_error)}")

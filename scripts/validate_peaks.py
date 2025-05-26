@@ -106,11 +106,11 @@ class HeatmapValidator:
             return False, None, str(e)
 
     async def validate_entry(
-        self, entry: heatmap_peaks, save_debug_plot: bool = True
+        self, entry: heatmap_peaks, save_debug_plot: bool = False
     ) -> bool:
         """Validate a single heatmap entry."""
         if not entry.cropped_image:
-            logger.info(f"❌ No cropped image for video {entry.video_id}")
+            print(f"❌ No cropped image for video {entry.video_id}")
             return False
 
         has_peaks, smoothed_signal, message = self.analyze_heatmap(entry.cropped_image)
@@ -124,35 +124,52 @@ class HeatmapValidator:
             plt.close()
 
         if has_peaks:
-            logger.info(f"✅ Valid peaks found for video {entry.video_id}")
+            print(f"✅ Valid peaks found for video {entry.video_id}")
             return True
 
-        logger.info("❌ No significant peaks for video {entry.video_id}: {message}")
+        print(f"❌ No significant peaks for video {entry.video_id}: {message}")
         return False
 
-    async def process_entries(self, batch_size: int = 100):
-        """Process all entries in the database."""
+    async def process_entries(self, skip=0, batch_size: int = 100):
+        """Process entries that have peak data and mark them as reprocessed."""
         try:
-            total_count = await heatmap_peaks.count()
-            logger.info(f"Total entries to process: {total_count}")
+            # Only fetch entries with peak data
+            total_count = await heatmap_peaks.find(
+                {"peaks.0": {"$exists": True}}
+            ).count()
+            print(f"Total entries with peaks to process: {total_count}")
 
-            skip = 0
             while True:
+                # Find entries with peaks
                 entries = (
-                    await heatmap_peaks.find().skip(skip).limit(batch_size).to_list()
+                    await heatmap_peaks.find({"peaks.0": {"$exists": True}})
+                    .skip(skip)
+                    .limit(batch_size)
+                    .to_list()
                 )
+
                 if not entries:
                     break
 
                 for entry in entries:
                     self.processed_count += 1
 
+                    if getattr(entry, "reprocessed", False):
+                        print(
+                            f"⏭️ Skipping video {entry.video_id} - already reprocessed"
+                        )
+                        continue
+
                     is_valid = await self.validate_entry(entry)
                     if not is_valid:
                         await entry.delete()
                         self.removed_count += 1
                     else:
+                        # Mark as reprocessed and save
+                        entry.reprocessed = True
+                        await entry.save()
                         self.valid_count += 1
+                        print(f"✅ Marked video {entry.video_id} as reprocessed")
 
                     if self.processed_count % 10 == 0:
                         self._log_progress()
@@ -162,25 +179,25 @@ class HeatmapValidator:
             self._log_final_results()
 
         except Exception as e:
-            logger.error("Error processing entries: {str(e)}")
+            logger.error(f"Error processing entries: {str(e)}")
             raise
 
     def _log_progress(self):
         """Log current progress."""
-        logger.info(
-            "Progress: Processed {self.processed_count}, "
-            "Valid: {self.valid_count}, "
-            "Removed: {self.removed_count}"
+        print(
+            f"Progress: Processed {self.processed_count}, "
+            f"Valid: {self.valid_count}, "
+            f"Removed: {self.removed_count}"
         )
 
     def _log_final_results(self):
         """Log final results."""
-        logger.info("=" * 50)
-        logger.info("Validation Complete!")
-        logger.info("Total Processed: {self.processed_count}")
-        logger.info("Valid Entries: {self.valid_count}")
-        logger.info("Removed Entries: {self.removed_count}")
-        logger.info("=" * 50)
+        print(f"=" * 50)
+        print("Validation Complete!")
+        print(f"Total Processed: {self.processed_count}")
+        print(f"Valid Entries: {self.valid_count}")
+        print(f"Removed Entries: {self.removed_count}")
+        print(f"=" * 50)
 
 
 async def main():
@@ -189,12 +206,15 @@ async def main():
         validator = HeatmapValidator()
 
         start_time = datetime.now()
-        logger.info("Starting heatmap validation...")
+        print("Starting heatmap validation...")
 
-        await validator.process_entries(batch_size=100)
+        BATCH_SIZE = 10600
+        START_FROM = 0
+
+        await validator.process_entries(START_FROM, BATCH_SIZE)
 
         duration = datetime.now() - start_time
-        logger.info("Total execution time: {duration}")
+        print(f"Total execution time: {duration}")
 
     except Exception as e:
         logger.error("Main process failed: {str(e)}")
