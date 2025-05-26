@@ -1,5 +1,4 @@
 import os
-import sys
 import base64
 import cv2
 import numpy as np
@@ -326,9 +325,6 @@ class HeatmapExtractionService:
             logger.info("❌ Red dot (playhead) not found!")
             return [], ""
 
-        red_dot = max(contours, key=cv2.contourArea)
-        x, y, w, h = cv2.boundingRect(red_dot)
-
         roi_y_start = img.shape[0] - 150
         roi_y_end = img.shape[0] - 50
         roi = img[roi_y_start:roi_y_end, :]
@@ -388,8 +384,6 @@ class HeatmapExtractionService:
             logger.error("Invalid duration value: %s", duration)
             return [], ""
 
-        duration_per_column = duration / width
-
         # Enhanced peak filtering
         min_peak_height = np.max(smoothed) * 0.4  # 40% of max height
         filtered_peaks = [
@@ -401,7 +395,7 @@ class HeatmapExtractionService:
         sorted_peaks = sorted(filtered_peaks, key=lambda x: x[1], reverse=True)[:9]
 
         results = []
-        for peak, peak_height in sorted_peaks:
+        for peak, _ in sorted_peaks:
             peak_ts = (peak / width) * duration
             start_ts = max(0, peak_ts - 5)
             end_ts = min(duration, start_ts + 10)
