@@ -112,7 +112,7 @@ class HeatmapExtractionService:
         on_ec2 = os.getenv("ON_EC2", "false").lower() == "true"
 
         executable_path = "/usr/bin/google-chrome-stable" if on_ec2 else None
-        user_data_dir = "/home/ubuntu/youtube-bot/youtube-user-data" if on_ec2 else None
+        user_data_dir = "/home/ubuntu/youtube-bot/youtube-profile" if on_ec2 else None
 
         try:
             async with async_playwright() as p:
@@ -135,11 +135,11 @@ class HeatmapExtractionService:
                     executable_path=executable_path,
                 )
 
-                context = await browser_context.new_context(
-                    storage_state="auth.json"
-                )  # Load saved session
-
-                page = context.pages[0] if context.pages else await context.new_page()
+                page = (
+                    browser_context.pages[0]
+                    if browser_context.pages
+                    else await browser_context.new_page()
+                )
 
                 loop = asyncio.get_event_loop()
                 await loop.run_in_executor(None, stealth_sync, page)

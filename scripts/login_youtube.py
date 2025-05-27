@@ -1,27 +1,25 @@
+# filename: login_youtube.py
+
 import asyncio
 from playwright.async_api import async_playwright
 
 
-async def main():
+async def run():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=False
-        )  # Headed mode for manual login
-        context = await browser.new_context()
+        chrome_path = (
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"  # macOS
+        )
+
+        # This will persist session data to ./youtube-profile
+        context = await p.chromium.launch_persistent_context(
+            user_data_dir="./youtube-profile",
+            executable_path=chrome_path,
+            headless=False,  # So you can interact with it
+        )
         page = await context.new_page()
-
-        print("▶ Please log in to YouTube manually in the opened browser window.")
         await page.goto("https://youtube.com")
-
-        # Give you time to log in
-        print("⏳ Waiting 2 minutes for manual login...")
-        await asyncio.sleep(120)
-
-        # Save session to file
-        await context.storage_state(path="auth.json")
-        print("✅ Session saved to auth.json")
-
-        await browser.close()
+        print("🟢 Please log in manually, then close the browser.")
+        await page.wait_for_timeout(60000)  # Wait 60 seconds for manual login
 
 
-asyncio.run(main())
+asyncio.run(run())
