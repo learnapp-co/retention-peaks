@@ -107,27 +107,36 @@ class HeatmapExtractionService:
 
         screenshot_path = None
         video_url = f"https://www.youtube.com/watch?v={video_id}"
-        video_recording_path = None
+        # video_recording_path = None
 
         on_ec2 = os.getenv("ON_EC2", "false").lower() == "true"
 
-        executable_path = "/usr/bin/google-chrome-stable" if on_ec2 else None
-        user_data_dir = "/home/ubuntu/youtube-bot/youtube-profile" if on_ec2 else None
+        executable_path = (
+            "/usr/bin/google-chrome-stable"
+            if on_ec2
+            else "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        )
+        user_data_dir = (
+            "/home/ubuntu/youtube-bot/youtube-profile"
+            if on_ec2
+            else "/tmp/playwright-profile"
+        )
 
         try:
             async with async_playwright() as p:
                 browser_context = await p.chromium.launch_persistent_context(
                     user_data_dir=user_data_dir,
-                    headless=True,
+                    headless=False,
                     args=[
                         "--start-maximized",
                         "--no-sandbox",
                         "--disable-setuid-sandbox",
                         "--disable-blink-features=AutomationControlled",
                     ],
-                    no_viewport=True,
-                    record_video_dir=".",  # Save video in current directory
-                    record_video_size={"width": 1920, "height": 1080},
+                    viewport={"width": 1920, "height": 1080},
+                    # no_viewport=True,
+                    # record_video_dir=".",  # Save video in current directory
+                    # record_video_size={"width": 1920, "height": 1080},
                     user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                     extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},
                     geolocation={"longitude": -122.4194, "latitude": 37.7749},
@@ -296,11 +305,11 @@ class HeatmapExtractionService:
                 await page.screenshot(path=screenshot_path)
 
                 # Stop and save the video recording
-                try:
-                    video_recording_path = await page.video.path()
-                    logger.info(f"Screen recording saved at: {video_recording_path}")
-                except Exception as e:
-                    logger.warning(f"Could not save screen recording: {e}")
+                # try:
+                #     video_recording_path = await page.video.path()
+                #     logger.info(f"Screen recording saved at: {video_recording_path}")
+                # except Exception as e:
+                #     logger.warning(f"Could not save screen recording: {e}")
 
                 v_id = video_url.split("?v=")[1]
                 video = await Video.find_one({"video_id": v_id})
