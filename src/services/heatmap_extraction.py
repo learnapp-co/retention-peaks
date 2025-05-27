@@ -133,14 +133,13 @@ class HeatmapExtractionService:
                     geolocation={"longitude": -122.4194, "latitude": 37.7749},
                     permissions=["geolocation"],
                     executable_path=executable_path,
-                    storage_state="auth.json",
                 )
 
-                page = (
-                    browser_context.pages[0]
-                    if browser_context.pages
-                    else await browser_context.new_page()
-                )
+                context = await browser_context.new_context(
+                    storage_state="auth.json"
+                )  # Load saved session
+
+                page = context.pages[0] if context.pages else await context.new_page()
 
                 loop = asyncio.get_event_loop()
                 await loop.run_in_executor(None, stealth_sync, page)
