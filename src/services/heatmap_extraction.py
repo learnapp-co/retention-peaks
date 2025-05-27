@@ -14,6 +14,7 @@ from src.models.workspace import Video
 from ..models.heatmap import HeatmapResponse, heatmap_peaks
 import matplotlib.pyplot as plt
 from dotenv import load_dotenv
+import random
 
 load_dotenv()
 
@@ -25,6 +26,34 @@ class HeatmapExtractionService:
 
     async def get_peaks_by_video_id(self, video_id: str) -> HeatmapResponse:
         return await heatmap_peaks.find_one({"video_id": video_id})
+
+    async def simulate_human_interaction(self, page):
+        """Simulates human-like behavior to evade bot fingerprinting."""
+        try:
+            logger.info("🕹️ Simulating human interaction to evade bot fingerprinting...")
+
+            width = 1920
+            height = 1080
+
+            for _ in range(random.randint(3, 6)):
+                x = random.randint(0, width)
+                y = random.randint(0, height)
+                await page.mouse.move(x, y, steps=random.randint(5, 30))
+                await page.wait_for_timeout(random.randint(200, 800))
+
+            # Scroll slightly
+            for _ in range(random.randint(1, 3)):
+                scroll_amount = random.randint(100, 400)
+                await page.mouse.wheel(0, scroll_amount)
+                await page.wait_for_timeout(random.randint(300, 800))
+                await page.mouse.wheel(0, -scroll_amount)
+                await page.wait_for_timeout(random.randint(300, 800))
+
+            # Random click on safe area
+            await page.mouse.click(random.randint(100, 600), random.randint(100, 400))
+            logger.info("✅ Human-like interaction simulated.")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to simulate human interaction: {e}")
 
     async def save_peaks(
         self, peak_data: HeatmapResponse, forceProcess: bool = False
@@ -76,18 +105,17 @@ class HeatmapExtractionService:
             "🔄 No existing peaks found, extracting new peaks for video %s", video_id
         )
 
-        DEFAULT_RESPONSE: tuple[list[PeakData], str] = ([], "")
         screenshot_path = None
         video_url = f"https://www.youtube.com/watch?v={video_id}"
         video_recording_path = None
 
         on_ec2 = os.getenv("ON_EC2", "false").lower() == "true"
-        logger.info(f"Running on EC2: {on_ec2}")
+
         executable_path = "/usr/bin/google-chrome-stable" if on_ec2 else None
+        user_data_dir = "/home/ubuntu/youtube-bot/youtube-user-data" if on_ec2 else None
 
         try:
             async with async_playwright() as p:
-                user_data_dir = "./youtube-user-data"  # persistent profile
                 browser_context = await p.chromium.launch_persistent_context(
                     user_data_dir=user_data_dir,
                     headless=True,
@@ -95,6 +123,7 @@ class HeatmapExtractionService:
                         "--start-maximized",
                         "--no-sandbox",
                         "--disable-setuid-sandbox",
+                        "--disable-blink-features=AutomationControlled",
                     ],
                     no_viewport=True,
                     record_video_dir=".",  # Save video in current directory
@@ -117,6 +146,8 @@ class HeatmapExtractionService:
 
                 await page.goto(video_url, timeout=60000)
                 await page.wait_for_timeout(5000)
+
+                await self.simulate_human_interaction(page)
 
                 await page.screenshot(path="debug_before_player.png")
 
