@@ -123,7 +123,7 @@ class HeatmapExtractionService:
         )
 
         proxy = {
-            "server": "http://gate.decode0.com:10001",
+            "server": "http://spd66pl33y:8Ieabyb8Rm9VY8ww_n@gate.decodo.com:10001",
             "username": "spd66pl33y",
             "password": "8Ieabyb8Rm9VY8ww_n",  # Use full password from the dashboard
         }
