@@ -122,15 +122,23 @@ class HeatmapExtractionService:
             else "/tmp/playwright-profile"
         )
 
+        proxy = {
+            "server": "http://gate.decode0.com:10001",
+            "username": "spd66pl33y",
+            "password": "8Ieabyb8Rm9VY8ww_n",  # Use full password from the dashboard
+        }
+
         try:
             async with async_playwright() as p:
                 browser_context = await p.chromium.launch_persistent_context(
                     user_data_dir=user_data_dir,
                     headless=False,
+                    proxy=proxy,
                     args=[
                         "--start-maximized",
                         "--no-sandbox",
                         "--disable-setuid-sandbox",
+                        "--autoplay-policy=no-user-gesture-required",
                         "--disable-blink-features=AutomationControlled",
                     ],
                     viewport={"width": 1920, "height": 1080},
