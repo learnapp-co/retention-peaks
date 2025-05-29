@@ -37,6 +37,68 @@ logger = logging.getLogger(__name__)
 
 class HeatmapExtractionService:
 
+    async def wait_for_heatmap_children(self, page, timeout=30000, check_interval=1000):
+        """Wait for heatmap container and its children to load properly."""
+        logger.info("⏳ Waiting for heatmap children to load...")
+
+        try:
+            start_time = datetime.now()
+            while (datetime.now() - start_time).total_seconds() * 1000 < timeout:
+                children_info = await page.evaluate(
+                    """() => {
+                    const heatmap = document.querySelector('.ytp-heat-map-container');
+                    if (!heatmap) return null;
+                    
+                    const children = Array.from(heatmap.children);
+                    return {
+                        totalChildren: children.length,
+                        childrenDetails: children.map(child => ({
+                            tag: child.tagName,
+                            class: child.className,
+                            width: child.offsetWidth,
+                            height: child.offsetHeight,
+                            computed: {
+                                display: window.getComputedStyle(child).display,
+                                visibility: window.getComputedStyle(child).visibility,
+                                opacity: window.getComputedStyle(child).opacity
+                            }
+                        }))
+                    };
+                }"""
+                )
+
+                if children_info and children_info["totalChildren"] > 0:
+                    valid_children = [
+                        child
+                        for child in children_info["childrenDetails"]
+                        if (
+                            child["width"] > 0
+                            and child["height"] > 0
+                            and child["computed"]["display"] != "none"
+                            and child["computed"]["visibility"] != "hidden"
+                        )
+                    ]
+
+                    if len(valid_children) > 0:
+                        print(f"✅ Found {len(valid_children)} valid heatmap children")
+                        logger.info("Child elements details:")
+                        for i, child in enumerate(valid_children):
+                            print(f"Child {i + 1}:")
+                            print(f"  - Tag: {child['tag']}")
+                            print(f"  - Class: {child['class']}")
+                            print(f"  - Dimensions: {child['width']}x{child['height']}")
+                        return True
+
+                logger.info("⏳ Waiting for heatmap children to become visible...")
+                await page.wait_for_timeout(check_interval)
+
+            print("❌ Timeout waiting for heatmap children")
+            return False
+
+        except Exception as e:
+            print(f"❌ Error while waiting for heatmap children: {str(e)}")
+            return False
+
     async def wait_for_heatmap(self, page, max_attempts=15, interval=3000):
         """Wait for heatmap to become visible with detailed logging."""
         logger.info("⏳ Waiting for heatmap to appear...")
@@ -350,45 +412,52 @@ class HeatmapExtractionService:
                 """
                 )
 
-                # try:
-                #     heatmap_info = await page.evaluate(
-                #         """() => {
-                #             const heatmap = document.querySelector('.ytp-heat-map-container');
-                #             if (heatmap) {
-                #                 heatmap.style.opacity = '1';
-                #                 heatmap.style.display = 'block';
+                try:
+                    heatmap_info = await page.evaluate(
+                        """() => {
+                            const heatmap = document.querySelector('.ytp-heat-map-container');
+                            if (heatmap) {
+                                heatmap.style.opacity = '1';
+                                heatmap.style.display = 'block';
+                                heatmap.style.visibility = 'visible';
 
-                #                 // Check heatmap properties
-                #                 const children = heatmap.children;
-                #                 const styles = window.getComputedStyle(heatmap);
+                                const children = Array.from(heatmap.children);
+                                // Also ensure children are visible
+                                children.forEach(child => {
+                                    child.style.display = 'block';
+                                    child.style.visibility = 'visible';
+                                    child.style.opacity = '1';
+                                });
 
-                #                 return {
-                #                     childCount: children.length,
-                #                     visibility: styles.visibility,
-                #                     display: styles.display,
-                #                     opacity: styles.opacity,
-                #                     dimensions: {
-                #                         width: heatmap.offsetWidth,
-                #                         height: heatmap.offsetHeight
-                #                     }
-                #                 };
-                #             }
-                #             return null;
-                #         }"""
-                #     )
+                                const styles = window.getComputedStyle(heatmap);
 
-                #     if heatmap_info:
-                #         logger.info("✅ Heatmap modified successfully:")
-                #         logger.info(f"📊 Children: {heatmap_info['childCount']}")
-                #         logger.info(f"👁️ Visibility: {heatmap_info['visibility']}")
-                #         logger.info(f"📐 Dimensions: {heatmap_info['dimensions']}")
-                #     else:
-                #         logger.warning("⚠️ Heatmap element not found")
+                                return {
+                                    childCount: children.length,
+                                    visibility: styles.visibility,
+                                    display: styles.display,
+                                    opacity: styles.opacity,
+                                    dimensions: {
+                                        width: heatmap.offsetWidth,
+                                        height: heatmap.offsetHeight
+                                    }
+                                };
+                            }
+                            return null;
+                        }"""
+                    )
 
-                # except Exception as e:
-                #     logger.error("❌ Failed to modify heatmap visibility: %s", str(e))
-                #     await page.screenshot(path="heatmap_error.png")
-                #     raise
+                    if heatmap_info:
+                        print("✅ Heatmap modified successfully:")
+                        print(f"📊 Children: {heatmap_info['childCount']}")
+                        print(f"👁️ Visibility: {heatmap_info['visibility']}")
+                        print(f"📐 Dimensions: {heatmap_info['dimensions']}")
+                    else:
+                        logger.warning("⚠️ Heatmap element not found")
+
+                except Exception as e:
+                    logger.error("❌ Failed to modify heatmap visibility: %s", str(e))
+                    await page.screenshot(path="heatmap_error.png")
+                    raise
 
                 # for _ in range(15):
                 #     heatmap_visible = await page.evaluate(
@@ -406,6 +475,11 @@ class HeatmapExtractionService:
 
                 if not await self.wait_for_heatmap(page):
                     logger.error("Failed to detect visible heatmap")
+                    await self._save_empty_peaks(video_id)
+                    return [], ""
+
+                if not await self.wait_for_heatmap_children(page):
+                    logger.error("Failed to detect heatmap children")
                     await self._save_empty_peaks(video_id)
                     return [], ""
 
