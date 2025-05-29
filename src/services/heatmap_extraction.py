@@ -37,6 +37,64 @@ logger = logging.getLogger(__name__)
 
 class HeatmapExtractionService:
 
+    async def wait_for_heatmap(self, page, max_attempts=15, interval=3000):
+        """Wait for heatmap to become visible with detailed logging."""
+        logger.info("⏳ Waiting for heatmap to appear...")
+
+        for attempt in range(max_attempts):
+            try:
+                heatmap_info = await page.evaluate(
+                    """() => {
+                        const heatmap = document.querySelector('.ytp-heat-map-container');
+                        if (!heatmap) return null;
+                        
+                        const styles = window.getComputedStyle(heatmap);
+                        const rect = heatmap.getBoundingClientRect();
+                        
+                        return {
+                            visible: heatmap.offsetParent !== null,
+                            display: styles.display,
+                            opacity: styles.opacity,
+                            dimensions: {
+                                width: rect.width,
+                                height: rect.height
+                            },
+                            childCount: heatmap.children.length
+                        };
+                    }"""
+                )
+
+                if heatmap_info:
+                    print(f"Attempt {attempt + 1}: Heatmap found with properties:")
+                    print(f"📏 Dimensions: {heatmap_info['dimensions']}")
+                    print(f"👁️ Display: {heatmap_info['display']}")
+                    print(f"🔍 Opacity: {heatmap_info['opacity']}")
+                    print(f"🧩 Child elements: {heatmap_info['childCount']}")
+
+                    if (
+                        heatmap_info["visible"]
+                        and heatmap_info["display"] != "none"
+                        and float(heatmap_info["opacity"]) > 0
+                        and heatmap_info["dimensions"]["width"] > 0
+                    ):
+
+                        await page.screenshot(
+                            path=f"heatmap_visible_attempt_{attempt}.png"
+                        )
+                        logger.info("✅ Heatmap is fully visible and rendered")
+                        return True
+
+                print(f"⏳ Attempt {attempt + 1}: Heatmap not fully visible yet")
+                await page.wait_for_timeout(interval)
+
+            except Exception as e:
+                print(f"⚠️ Attempt {attempt + 1} failed: {str(e)}")
+                await page.wait_for_timeout(interval)
+
+        logger.error("❌ Heatmap did not become visible after all attempts")
+        await page.screenshot(path="heatmap_not_visible_final.png")
+        return False
+
     async def get_peaks_by_video_id(self, video_id: str) -> HeatmapResponse:
         return await heatmap_peaks.find_one({"video_id": video_id})
 
@@ -136,9 +194,9 @@ class HeatmapExtractionService:
         )
 
         proxy = {
-            "server": "http://spd66pl33y:w7+zfSUcpn7e88GpDx@in.decodo.com:10009",
-            "username": "spd66pl33y",
-            "password": "w7+zfSUcpn7e88GpDx",  # Use full password from the dashboard
+            "server": "http://spctlnmput:Sm6gZA8q=ca3beKa8z@in.decodo.com:10000",
+            "username": "spctlnmput",
+            "password": "Sm6gZA8q=ca3beKa8z",  # Use full password from the dashboard
         }
 
         try:
@@ -292,57 +350,62 @@ class HeatmapExtractionService:
                 """
                 )
 
-                try:
-                    heatmap_info = await page.evaluate(
-                        """() => {
-                            const heatmap = document.querySelector('.ytp-heat-map-container');
-                            if (heatmap) {
-                                heatmap.style.opacity = '1';
-                                heatmap.style.display = 'block';
-                                
-                                // Check heatmap properties
-                                const children = heatmap.children;
-                                const styles = window.getComputedStyle(heatmap);
-                                
-                                return {
-                                    childCount: children.length,
-                                    visibility: styles.visibility,
-                                    display: styles.display,
-                                    opacity: styles.opacity,
-                                    dimensions: {
-                                        width: heatmap.offsetWidth,
-                                        height: heatmap.offsetHeight
-                                    }
-                                };
-                            }
-                            return null;
-                        }"""
-                    )
+                # try:
+                #     heatmap_info = await page.evaluate(
+                #         """() => {
+                #             const heatmap = document.querySelector('.ytp-heat-map-container');
+                #             if (heatmap) {
+                #                 heatmap.style.opacity = '1';
+                #                 heatmap.style.display = 'block';
 
-                    if heatmap_info:
-                        logger.info("✅ Heatmap modified successfully:")
-                        logger.info(f"📊 Children: {heatmap_info['childCount']}")
-                        logger.info(f"👁️ Visibility: {heatmap_info['visibility']}")
-                        logger.info(f"📐 Dimensions: {heatmap_info['dimensions']}")
-                    else:
-                        logger.warning("⚠️ Heatmap element not found")
+                #                 // Check heatmap properties
+                #                 const children = heatmap.children;
+                #                 const styles = window.getComputedStyle(heatmap);
 
-                except Exception as e:
-                    logger.error("❌ Failed to modify heatmap visibility: %s", str(e))
-                    await page.screenshot(path="heatmap_error.png")
-                    raise
+                #                 return {
+                #                     childCount: children.length,
+                #                     visibility: styles.visibility,
+                #                     display: styles.display,
+                #                     opacity: styles.opacity,
+                #                     dimensions: {
+                #                         width: heatmap.offsetWidth,
+                #                         height: heatmap.offsetHeight
+                #                     }
+                #                 };
+                #             }
+                #             return null;
+                #         }"""
+                #     )
 
-                for _ in range(15):
-                    heatmap_visible = await page.evaluate(
-                        "document.querySelector('.ytp-heat-map-container') !== null;"
-                    )
-                    if heatmap_visible:
-                        logger.info("📊 Heatmap is visible.")
-                        await page.screenshot(path="visible_heatmap.png")
-                        break
-                    await page.wait_for_timeout(3000)
-                else:
-                    logger.error("Heatmap not found!")
+                #     if heatmap_info:
+                #         logger.info("✅ Heatmap modified successfully:")
+                #         logger.info(f"📊 Children: {heatmap_info['childCount']}")
+                #         logger.info(f"👁️ Visibility: {heatmap_info['visibility']}")
+                #         logger.info(f"📐 Dimensions: {heatmap_info['dimensions']}")
+                #     else:
+                #         logger.warning("⚠️ Heatmap element not found")
+
+                # except Exception as e:
+                #     logger.error("❌ Failed to modify heatmap visibility: %s", str(e))
+                #     await page.screenshot(path="heatmap_error.png")
+                #     raise
+
+                # for _ in range(15):
+                #     heatmap_visible = await page.evaluate(
+                #         "document.querySelector('.ytp-heat-map-container') !== null;"
+                #     )
+                #     if heatmap_visible:
+                #         logger.info("📊 Heatmap is visible.")
+                #         await page.screenshot(path="visible_heatmap.png")
+                #         break
+                #     await page.wait_for_timeout(3000)
+                # else:
+                #     logger.error("Heatmap not found!")
+                #     await self._save_empty_peaks(video_id)
+                #     return [], ""
+
+                if not await self.wait_for_heatmap(page):
+                    logger.error("Failed to detect visible heatmap")
                     await self._save_empty_peaks(video_id)
                     return [], ""
 
