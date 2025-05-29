@@ -5,6 +5,7 @@ import numpy as np
 import traceback
 import logging
 import asyncio
+import json
 from datetime import datetime, timezone
 from scipy.signal import find_peaks
 from playwright.async_api import async_playwright
@@ -17,6 +18,18 @@ from dotenv import load_dotenv
 import random
 
 load_dotenv()
+
+
+def process_cookies(cookies):
+    """Process cookies to ensure they have valid sameSite values"""
+    for cookie in cookies:
+        if "sameSite" not in cookie or cookie["sameSite"] not in [
+            "Strict",
+            "Lax",
+            "None",
+        ]:
+            cookie["sameSite"] = "Lax"  # Default to Lax
+    return cookies
 
 
 logger = logging.getLogger(__name__)
@@ -123,9 +136,9 @@ class HeatmapExtractionService:
         )
 
         proxy = {
-            "server": "http://spd66pl33y:8Ieabyb8Rm9VY8ww_n@gate.decodo.com:10001",
+            "server": "http://spd66pl33y:w7+zfSUcpn7e88GpDx@gate.decodo.com:10010",
             "username": "spd66pl33y",
-            "password": "8Ieabyb8Rm9VY8ww_n",  # Use full password from the dashboard
+            "password": "w7+zfSUcpn7e88GpDx",  # Use full password from the dashboard
         }
 
         try:
@@ -151,6 +164,14 @@ class HeatmapExtractionService:
                     permissions=["geolocation"],
                     executable_path=executable_path,
                 )
+
+                try:
+                    with open("youtube_cookies.json", "r") as f:
+                        cookies = json.load(f)
+                        processed_cookies = process_cookies(cookies)
+                        await browser_context.add_cookies(processed_cookies)
+                except Exception as e:
+                    logger.error(f"Failed to load cookies: {str(e)}")
 
                 page = (
                     browser_context.pages[0]
@@ -271,15 +292,45 @@ class HeatmapExtractionService:
                 """
                 )
 
-                await page.evaluate(
-                    """
-                    const heatmap = document.querySelector('.ytp-heat-map-container');
-                    if (heatmap) {
-                        heatmap.style.opacity = '1';
-                        heatmap.style.display = 'block';
-                    }
-                """
-                )
+                try:
+                    heatmap_info = await page.evaluate(
+                        """() => {
+                            const heatmap = document.querySelector('.ytp-heat-map-container');
+                            if (heatmap) {
+                                heatmap.style.opacity = '1';
+                                heatmap.style.display = 'block';
+                                
+                                // Check heatmap properties
+                                const children = heatmap.children;
+                                const styles = window.getComputedStyle(heatmap);
+                                
+                                return {
+                                    childCount: children.length,
+                                    visibility: styles.visibility,
+                                    display: styles.display,
+                                    opacity: styles.opacity,
+                                    dimensions: {
+                                        width: heatmap.offsetWidth,
+                                        height: heatmap.offsetHeight
+                                    }
+                                };
+                            }
+                            return null;
+                        }"""
+                    )
+
+                    if heatmap_info:
+                        logger.info("✅ Heatmap modified successfully:")
+                        logger.info(f"📊 Children: {heatmap_info['childCount']}")
+                        logger.info(f"👁️ Visibility: {heatmap_info['visibility']}")
+                        logger.info(f"📐 Dimensions: {heatmap_info['dimensions']}")
+                    else:
+                        logger.warning("⚠️ Heatmap element not found")
+
+                except Exception as e:
+                    logger.error("❌ Failed to modify heatmap visibility: %s", str(e))
+                    await page.screenshot(path="heatmap_error.png")
+                    raise
 
                 for _ in range(15):
                     heatmap_visible = await page.evaluate(
@@ -287,6 +338,7 @@ class HeatmapExtractionService:
                     )
                     if heatmap_visible:
                         logger.info("📊 Heatmap is visible.")
+                        await page.screenshot(path="visible_heatmap.png")
                         break
                     await page.wait_for_timeout(3000)
                 else:
@@ -351,11 +403,11 @@ class HeatmapExtractionService:
             await self._save_empty_peaks(video_id)
             return [], ""
         finally:
-            if screenshot_path and os.path.exists(screenshot_path):
-                try:
-                    os.remove(screenshot_path)
-                except Exception as e:
-                    logger.error("Failed to remove screenshot: %s", str(e))
+            # if screenshot_path and os.path.exists(screenshot_path):
+            #     try:
+            #         os.remove(screenshot_path)
+            #     except Exception as e:
+            #         logger.error("Failed to remove screenshot: %s", str(e))
             try:
                 await browser_context.close()
             except Exception:
