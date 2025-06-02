@@ -159,9 +159,9 @@ class Workspace(Document):
 class Transcript(BaseModel):
     """Represents a TypeScript type."""
 
-    text: str
-    start: float
-    end: float
+    text: Optional[str] = None
+    start: Optional[float] = None
+    end: Optional[float] = None
 
 
 class VideoStatsHist(BaseModel):

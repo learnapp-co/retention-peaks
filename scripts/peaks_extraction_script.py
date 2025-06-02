@@ -13,7 +13,11 @@ class HeatmapBatchService:
         self.heatmap_service = HeatmapExtractionService()
 
     async def process_videos_batch(
-        self, skip: int = 0, limit: int = 1000, min_age_days: int = 4
+        self,
+        skip: int = 0,
+        limit: int = 1000,
+        min_age_days: int = 4,
+        max_age_days: int = 15,
     ):
         """
         Process videos in batches with skip and limit support
@@ -22,15 +26,23 @@ class HeatmapBatchService:
             skip: Number of videos to skip
             limit: Maximum number of videos to process (None for all)
             min_age_days: Minimum age of videos in days
+            max_age_days: Maximum age of videos in days for reprocessing
         """
         try:
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=min_age_days)
+            current_time = datetime.now(timezone.utc)
+            min_cutoff_date = current_time - timedelta(days=min_age_days)
+            max_cutoff_date = current_time - timedelta(days=max_age_days)
+
             total_videos = await Video.count()
-            processed_ids = await self._get_processed_video_ids()
+            processed_videos = (
+                await self._get_processed_videos()
+            )  # Changed to get full documents
 
             print(f"Total videos in database: {total_videos}")
-            print(f"Already processed videos: {len(processed_ids)}")
-            print(f"Looking for videos older than: {cutoff_date}")
+            print(f"Already processed videos: {len(processed_videos)}")
+            print(
+                f"Looking for videos between ages: {min_age_days} and {max_age_days} days"
+            )
 
             # Build query
             query = {
@@ -44,47 +56,67 @@ class HeatmapBatchService:
                 print("No unprocessed videos found")
                 return
 
-            # Apply skip and limit
-            video_cursor = Video.find(query).skip(skip)
-            if limit:
-                video_cursor = video_cursor.limit(limit)
+            # Create processed videos lookup for quick access
+            processed_lookup = {doc.video_id: doc for doc in processed_videos}
+
+            video_cursor = (
+                Video.find(query).skip(skip if skip else 0).limit(limit if limit else 0)
+            )
 
             videos = await video_cursor.to_list()
             batch_size = len(videos)
 
-            print(
-                f"Processing batch: skip={skip}, limit={limit or 'None'}, "
-                f"found {batch_size} videos out of {total_count} total"
-            )
-
-            total_processed = await self.get_total_processed_count()
-            print(f"Total successfully processed videos so far: {total_processed}")
+            # ... rest of the setup code remains the same ...
 
             processed_count = 0
             for idx, video in enumerate(videos, 1):
                 try:
-                    if video.video_id in processed_ids:
-                        print(f"⏭️ Skipping video {video.video_id} - already processed")
-                        continue
-
+                    # Get published date
                     if not video.published_at:
                         print(
                             f"⏭️ Skipping video {video.video_id} - missing publish date"
                         )
                         continue
 
-                    if isinstance(video.published_at, str):
-                        published_at = parse(video.published_at)
-                    else:
-                        published_at = video.published_at
-
-                    # Fix: Make sure published_at is timezone-aware
+                    published_at = (
+                        parse(video.published_at)
+                        if isinstance(video.published_at, str)
+                        else video.published_at
+                    )
                     if published_at.tzinfo is None:
                         published_at = published_at.replace(tzinfo=timezone.utc)
 
-                    if published_at >= cutoff_date:
+                    video_age = current_time - published_at
+                    print("video_age: ", video_age)
+
+                    # Check if video is too recent
+                    if published_at >= min_cutoff_date:
                         print(f"⏭️ Skipping video {video.video_id} - too recent")
                         continue
+
+                    # Check if video is already processed
+                    if video.video_id in processed_lookup:
+                        processed_doc = processed_lookup[video.video_id]
+                        if processed_doc.no_peaks:
+                            print(f"⏭️ Skipping video {video.video_id} - no peaks")
+                            continue
+                        if (
+                            hasattr(processed_doc, "stop_reprocess")
+                            and processed_doc.stop_reprocess
+                        ):
+                            print(
+                                f"⏭️ Skipping video {video.video_id} - reprocessing stopped"
+                            )
+                            continue
+
+                        # If video is older than max age, mark it to stop reprocessing
+                        if published_at <= max_cutoff_date:
+                            processed_doc.stop_reprocess = True
+                            await processed_doc.save()
+                            print(
+                                f"⏭️ Skipping video {video.video_id} - exceeded max age"
+                            )
+                            continue
 
                     print(
                         f"Processing video {video.video_id} ({idx}/{batch_size}) "
@@ -92,12 +124,13 @@ class HeatmapBatchService:
                     )
 
                     peaks, base64_image = await self.heatmap_service.extract_peaks(
-                        video.video_id
+                        video.video_id, True
                     )
 
                     if peaks and base64_image:
+
                         processed_count += 1
-                        current_total = total_processed + processed_count
+                        current_total = await self.get_total_processed_count()
                         print(
                             f"✅ Processed video: {video.video_id} (Total processed: {current_total})"
                         )
@@ -109,7 +142,7 @@ class HeatmapBatchService:
                     continue
 
             success_rate = (processed_count / batch_size) * 100 if batch_size > 0 else 0
-            final_total = total_processed + processed_count
+            final_total = current_total + processed_count
             print(
                 f"Batch complete: {processed_count}/{batch_size} processed "
                 f"successfully ({success_rate:.1f}%)"
@@ -120,14 +153,16 @@ class HeatmapBatchService:
             print(f"Batch processing error: {str(e)}")
             raise
 
-    async def _get_processed_video_ids(self) -> List[str]:
+    async def _get_processed_videos(self):
         """Get list of video IDs that have already been processed"""
-        processed = await heatmap_peaks.find().to_list()
-        return [doc.video_id for doc in processed]
+        return await heatmap_peaks.find().to_list()
 
     async def get_total_processed_count(self) -> int:
         """Get total number of successfully processed videos"""
         return await heatmap_peaks.count()
+
+    # async def get_peaks_by_video_id(self, video_id: str) -> heatmap_peaks:
+    #     return await heatmap_peaks.find_one({"video_id": video_id})
 
 
 async def main():
@@ -136,10 +171,12 @@ async def main():
         # Initialize service
         service = HeatmapBatchService()
         await init_services()
+        # await heatmap_peaks.migrate_reprocessed_field()
+        print("Migration completed")
 
         # Process videos in batches of 11150, starting from index 0
         BATCH_SIZE = 11150
-        START_FROM = 33451
+        START_FROM = 0
 
         print(
             f"Starting batch processing: batch_size={BATCH_SIZE}, "
@@ -147,7 +184,7 @@ async def main():
         )
 
         await service.process_videos_batch(
-            skip=START_FROM, limit=BATCH_SIZE, min_age_days=4
+            skip=START_FROM, limit=BATCH_SIZE, min_age_days=4, max_age_days=15
         )
 
         print("Batch processing completed")

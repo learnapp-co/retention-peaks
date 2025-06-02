@@ -37,68 +37,6 @@ logger = logging.getLogger(__name__)
 
 class HeatmapExtractionService:
 
-    async def wait_for_heatmap_children(self, page, timeout=30000, check_interval=1000):
-        """Wait for heatmap container and its children to load properly."""
-        logger.info("⏳ Waiting for heatmap children to load...")
-
-        try:
-            start_time = datetime.now()
-            while (datetime.now() - start_time).total_seconds() * 1000 < timeout:
-                children_info = await page.evaluate(
-                    """() => {
-                    const heatmap = document.querySelector('.ytp-heat-map-container');
-                    if (!heatmap) return null;
-                    
-                    const children = Array.from(heatmap.children);
-                    return {
-                        totalChildren: children.length,
-                        childrenDetails: children.map(child => ({
-                            tag: child.tagName,
-                            class: child.className,
-                            width: child.offsetWidth,
-                            height: child.offsetHeight,
-                            computed: {
-                                display: window.getComputedStyle(child).display,
-                                visibility: window.getComputedStyle(child).visibility,
-                                opacity: window.getComputedStyle(child).opacity
-                            }
-                        }))
-                    };
-                }"""
-                )
-
-                if children_info and children_info["totalChildren"] > 0:
-                    valid_children = [
-                        child
-                        for child in children_info["childrenDetails"]
-                        if (
-                            child["width"] > 0
-                            and child["height"] > 0
-                            and child["computed"]["display"] != "none"
-                            and child["computed"]["visibility"] != "hidden"
-                        )
-                    ]
-
-                    if len(valid_children) > 0:
-                        print(f"✅ Found {len(valid_children)} valid heatmap children")
-                        logger.info("Child elements details:")
-                        for i, child in enumerate(valid_children):
-                            print(f"Child {i + 1}:")
-                            print(f"  - Tag: {child['tag']}")
-                            print(f"  - Class: {child['class']}")
-                            print(f"  - Dimensions: {child['width']}x{child['height']}")
-                        return True
-
-                logger.info("⏳ Waiting for heatmap children to become visible...")
-                await page.wait_for_timeout(check_interval)
-
-            print("❌ Timeout waiting for heatmap children")
-            return False
-
-        except Exception as e:
-            print(f"❌ Error while waiting for heatmap children: {str(e)}")
-            return False
-
     async def wait_for_heatmap(self, page, max_attempts=15, interval=3000):
         """Wait for heatmap to become visible with detailed logging."""
         logger.info("⏳ Waiting for heatmap to appear...")
@@ -140,9 +78,6 @@ class HeatmapExtractionService:
                         and heatmap_info["dimensions"]["width"] > 0
                     ):
 
-                        await page.screenshot(
-                            path=f"heatmap_visible_attempt_{attempt}.png"
-                        )
                         logger.info("✅ Heatmap is fully visible and rendered")
                         return True
 
@@ -154,7 +89,6 @@ class HeatmapExtractionService:
                 await page.wait_for_timeout(interval)
 
         logger.error("❌ Heatmap did not become visible after all attempts")
-        await page.screenshot(path="heatmap_not_visible_final.png")
         return False
 
     async def get_peaks_by_video_id(self, video_id: str) -> HeatmapResponse:
@@ -217,13 +151,15 @@ class HeatmapExtractionService:
             )
 
     async def _save_empty_peaks(self, video_id):
-        peak_data = HeatmapResponse(
+        no_peak_data = HeatmapResponse(
             video_id=video_id,
-            peaks=[],
-            processed_at=datetime.utcnow(),
-            cropped_image="",
+            peaks=None,
+            heatmap_image=None,
+            no_peaks=True,
+            reprocessed=False,
+            stop_reprocess=False,
         )
-        await self.save_peaks(peak_data)
+        await self.save_peaks(no_peak_data)
 
     async def extract_peaks(
         self, video_id: str, forceProcess: bool = False
@@ -255,18 +191,18 @@ class HeatmapExtractionService:
             else "/tmp/playwright-profile"
         )
 
-        proxy = {
-            "server": "http://spctlnmput:Sm6gZA8q=ca3beKa8z@in.decodo.com:10000",
-            "username": "spctlnmput",
-            "password": "Sm6gZA8q=ca3beKa8z",  # Use full password from the dashboard
-        }
+        # proxy = {
+        #     "server": "http://spctlnmput:Sm6gZA8q=ca3beKa8z@in.decodo.com:10000",
+        #     "username": "spctlnmput",
+        #     "password": "Sm6gZA8q=ca3beKa8z",  # Use full password from the dashboard
+        # }
 
         try:
             async with async_playwright() as p:
                 browser_context = await p.chromium.launch_persistent_context(
                     user_data_dir=user_data_dir,
-                    headless=False,
-                    proxy=proxy,
+                    headless=True,
+                    # proxy=proxy,
                     args=[
                         "--start-maximized",
                         "--no-sandbox",
@@ -307,8 +243,6 @@ class HeatmapExtractionService:
 
                 await self.simulate_human_interaction(page)
 
-                await page.screenshot(path="debug_before_player.png")
-
                 try:
                     await page.click('button:has-text("Accept")', timeout=5000)
                 except Exception:
@@ -318,13 +252,11 @@ class HeatmapExtractionService:
                 try:
                     await page.wait_for_selector(".html5-video-player", timeout=30000)
                 except Exception as e:
-                    await page.screenshot(path="debug_player_timeout.png")
                     logger.error("Timeout waiting for .html5-video-player: %s", str(e))
                     await self._save_empty_peaks(video_id)
                     return [], ""
 
                 # Screenshot after video loads
-                await page.screenshot(path="debug_after_video_load.png")
 
                 error_selector = ".ytp-error"
                 try:
@@ -362,9 +294,6 @@ class HeatmapExtractionService:
                         logger.info("✅ No ads detected or ad finished")
                         break
 
-                # Screenshot before fullscreen
-                await page.screenshot(path="debug_fullscreen_check.png")
-
                 try:
                     fullscreen_button = page.locator(".ytp-fullscreen-button")
                     if await fullscreen_button.is_visible(timeout=3000):
@@ -383,9 +312,6 @@ class HeatmapExtractionService:
                     logger.warning("Fullscreen failed with error: %s", str(e))
                     await self._save_empty_peaks(video_id)
                     return [], ""
-
-                # Screenshot after entering fullscreen
-                await page.screenshot(path="debug_after_fullscreen.png")
 
                 await page.evaluate(
                     """
@@ -456,7 +382,6 @@ class HeatmapExtractionService:
 
                 except Exception as e:
                     logger.error("❌ Failed to modify heatmap visibility: %s", str(e))
-                    await page.screenshot(path="heatmap_error.png")
                     raise
 
                 # for _ in range(15):
@@ -475,11 +400,6 @@ class HeatmapExtractionService:
 
                 if not await self.wait_for_heatmap(page):
                     logger.error("Failed to detect visible heatmap")
-                    await self._save_empty_peaks(video_id)
-                    return [], ""
-
-                if not await self.wait_for_heatmap_children(page):
-                    logger.error("Failed to detect heatmap children")
                     await self._save_empty_peaks(video_id)
                     return [], ""
 
@@ -540,11 +460,11 @@ class HeatmapExtractionService:
             await self._save_empty_peaks(video_id)
             return [], ""
         finally:
-            # if screenshot_path and os.path.exists(screenshot_path):
-            #     try:
-            #         os.remove(screenshot_path)
-            #     except Exception as e:
-            #         logger.error("Failed to remove screenshot: %s", str(e))
+            if screenshot_path and os.path.exists(screenshot_path):
+                try:
+                    os.remove(screenshot_path)
+                except Exception as e:
+                    logger.error("Failed to remove screenshot: %s", str(e))
             try:
                 await browser_context.close()
             except Exception:
